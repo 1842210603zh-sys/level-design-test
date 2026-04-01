@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>半开放/开放式关卡策划能力自测</title>
+    <style>
+        :root {
+            --wechat-green: #07C160;
+            --bg-color: #F7F7F7;
+            --card-bg: #FFFFFF;
+            --text-main: #333333;
+            --text-sub: #888888;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 16px;
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+        .header { text-align: center; margin-bottom: 24px; }
+        .header h1 { font-size: 22px; color: #000; margin-bottom: 8px; }
+        .header p { font-size: 13px; color: var(--text-sub); text-align: left; background: var(--card-bg); padding: 12px; border-radius: 8px; margin:0;}
+        .card { background-color: var(--card-bg); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .question-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #000; }
+        .weight-tag { font-size: 12px; color: var(--wechat-green); background: rgba(7,193,96,0.1); padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: normal;}
+        .evidence-tag { font-size: 13px; color: #E6A23C; background: #fdf6ec; padding: 8px; border-radius: 6px; margin-bottom: 12px; display: inline-block; width: calc(100% - 16px); box-sizing: border-box;}
+        
+        .option-label { display: block; margin-bottom: 10px; padding: 12px; border: 1.5px solid #E5E5E5; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all 0.2s; position: relative;}
+        .option-label.selected { border-color: var(--wechat-green); background-color: rgba(7,193,96,0.05); }
+        .option-label input { display: none; }
+        
+        .submit-btn { background-color: var(--wechat-green); color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; font-size: 16px; font-weight: bold; position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); box-shadow: 0 4px 12px rgba(7,193,96,0.3); z-index: 100; cursor:pointer;}
+        
+        #result-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+        .result-content { background: #fff; width: 85%; max-height: 80vh; border-radius: 12px; padding: 24px; overflow-y: auto; position: relative;}
+        .result-title { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 16px; color: #000; }
+        .score-display { font-size: 36px; color: var(--wechat-green); font-weight: bold; text-align: center; margin-bottom: 8px; }
+        .level-display { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 16px; }
+        .advice-section { font-size: 14px; color: #555; background: #f9f9f9; padding: 12px; border-radius: 8px; margin-top: 12px; }
+        .close-btn { background: #f2f2f2; color: #333; border: none; padding: 10px; width: 100%; border-radius: 8px; margin-top: 20px; font-weight: bold; cursor:pointer;}
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>关卡策划能力自测 (半开放/开放式)</h1>
+        <p>
+            <b>打分指南：</b><br>
+            1. 按最近 1-2 个项目“稳定做到”的水平打分。<br>
+            2. 无作品/文档/白盒等证据支持的项，建议自评降 1 分。<br>
+            3. 请做多方评分（自评/互评/主管评）看中位数。
+        </p>
+    </div>
+
+    <form id="evaluationForm"></form>
+
+    <button type="button" class="submit-btn" onclick="calculateScore()">生成评估报告</button>
+
+    <!-- 结果弹窗 -->
+    <div id="result-modal">
+        <div class="result-content">
+            <div class="result-title">能力评估结果</div>
+            <div class="score-display" id="final-score">0</div>
+            <div class="level-display" id="final-level">段位判定</div>
+            <div class="advice-section" id="final-advice">建议加载中...</div>
+            <button class="close-btn" onclick="closeModal()">关闭并重新评测</button>
+        </div>
+    </div>
+
+    <script>
+        const questionsData = [
+            {
+                id: 'A', title: '空间拓扑与区域结构', weight: 15, evidence: '拓扑图、白盒视频、玩家路径记录、区域解锁图',
+                options: [
+                    { score: 1, text: '主要按直觉铺主路，支路像岔开的走廊，缺少回流和层次。' },
+                    { score: 2, text: '能按要求搭主/支路/简单捷径，但区域结构依赖参考或上级指导。' },
+                    { score: 3, text: '能独立设计 hub、环路、回流、软硬锁，主目标清晰，偏航自然。' },
+                    { score: 4, text: '能统筹多个区域的连接、边界、解锁顺序、重访路径和节奏差异。' },
+                    { score: 5, text: '能沉淀出区域拓扑模板和评审标准，指导多人做出统一结构质量。' }
+                ]
+            },
+            {
+                id: 'B', title: '引导与空间认知', weight: 10, evidence: '地标分层图、引导说明、玩家迷路点测试记录',
+                options: [
+                    { score: 1, text: '强依赖 UI 箭头，玩家一离开标记就容易迷失。' },
+                    { score: 2, text: '会用灯光、路牌、开口方向做单点引导，但区域级认知弱。' },
+                    { score: 3, text: '能建立远中近景地标与导向，玩家不看地图也能判断方向。' },
+                    { score: 4, text: '能控制“自由探索”和“目标清晰”平衡，区分探索/目标性迷失。' },
+                    { score: 5, text: '能制定项目级地标、视线、导向优先级规范，并培训他人使用。' }
+                ]
+            },
+            {
+                id: 'C', title: '探索闭环与 POI 设计', weight: 15, evidence: 'POI 表、偏航设计说明、奖励分布图、探索完成率数据',
+                options: [
+                    { score: 1, text: '会往地图里放东西，但多数只是“有内容”，缺少明确动机。' },
+                    { score: 2, text: '知道主路推进、支路给奖励，但偏航价值不稳定，奖励偏随意。' },
+                    { score: 3, text: '每个 POI 都能说清动机、成本、风险、反馈，探索有完整闭环。' },
+                    { score: 4, text: '能设计短中长三层探索闭环，控制密度、留白、远期目标与重访。' },
+                    { score: 5, text: '能定义项目的偏航模型、奖励模型、POI密度标准和区域内容节奏。' }
+                ]
+            },
+            {
+                id: 'D', title: '遭遇与战斗空间设计', weight: 15, evidence: '遭遇表、敌人布局图、切入路径图、测试录像',
+                options: [
+                    { score: 1, text: '主要是摆敌人和摆掩体，空间和战斗逻辑脱节。' },
+                    { score: 2, text: '能做巡逻、埋伏、精英点、波次，但遭遇多为模板化摆放。' },
+                    { score: 3, text: '能把遭遇和空间命题绑定，如高低差压制、潜入切入、绕后等。' },
+                    { score: 4, text: '能处理战斗、潜行、跑酷、环境变化叠加后的复杂遭遇。' },
+                    { score: 5, text: '能抽象出遭遇模板、验证标准和区域战斗语言，带动多人稳定产出。' }
+                ]
+            },
+            {
+                id: 'E', title: '任务状态、区域阶段与重访', weight: 10, evidence: '任务流程图、状态图、异常流程清单、回访内容设计',
+                options: [
+                    { score: 1, text: '会挂简单触发和基础交互，复杂状态一多就容易乱。' },
+                    { score: 2, text: '能做单阶段任务内容，但对失败恢复、跳步骤支持弱。' },
+                    { score: 3, text: '能独立处理区域状态切换、任务挂接、失败恢复和基础重访。' },
+                    { score: 4, text: '能设计多阶段区域演变，让重返同一空间时有新的玩法与认知变化。' },
+                    { score: 5, text: '能定义区域状态管理规则、防断流方案和重访设计原则。' }
+                ]
+            },
+            {
+                id: 'F', title: '系统耦合与玩家能力设计', weight: 10, evidence: '能力门槛设计、区域系统关系图、风险收益说明',
+                options: [
+                    { score: 1, text: '主要把关卡看成“场景 + 内容摆放”，和系统脱节。' },
+                    { score: 2, text: '知道任务、战斗、采集要挂在区域里，但耦合比较浅。' },
+                    { score: 3, text: '能根据玩家能力、资源状态、成长节奏设计空间和玩法机会。' },
+                    { score: 4, text: '能让 AI、成长、潜行、天气等系统在一个区域里协同工作。' },
+                    { score: 5, text: '能和系统、数值策划共同定义“空间如何放大系统乐趣”的规则。' }
+                ]
+            },
+            {
+                id: 'G', title: 'UE技术落地与实现判断', weight: 10, evidence: '白盒关卡、蓝图逻辑、技术风险清单、实现方案文档',
+                options: [
+                    { score: 1, text: '熟悉基础编辑器操作，但经常提落不了地的设计。' },
+                    { score: 2, text: '能做白盒、简单触发器、简单蓝图挂接，技术边界感较弱。' },
+                    { score: 3, text: '能独立完成白盒验证、基础BP、导航验证、状态切换。' },
+                    { score: 4, text: '理解 WP/DL/NavMesh/性能预算对设计的真实约束。' },
+                    { score: 5, text: '能推动模板化、配置化、工具化，让区域生产更稳定。' }
+                ]
+            },
+            {
+                id: 'H', title: '测试、数据与迭代能力', weight: 10, evidence: '测试定位迷路点、跳过点、卡点、死亡点记录',
+                options: [
+                    { score: 1, text: '主要凭个人感觉改图，缺少验证闭环。' },
+                    { score: 2, text: '会记录玩家问题，但常停留在现象层，难找根因。' },
+                    { score: 3, text: '能根据测试客观定位迷路点、跳过点、卡点并执行修复。' },
+                    { score: 4, text: '能通过数据埋点和白盒玩家录像分析流失率，进行区域级调优。' },
+                    { score: 5, text: '能建立区域的质量验收漏斗，制定数据验证的标准流。' }
+                ]
+            }
+        ];
+
+        const form = document.getElementById('evaluationForm');
+        let totalWeight = 0;
+
+        // 动态生成表单
+        questionsData.forEach(q => {
+            totalWeight += q.weight;
+            let html = `<div class="card">
+                <div class="question-title">${q.id}. ${q.title} <span class="weight-tag">权重 ${q.weight}%</span></div>
+                <div class="evidence-tag">📝 证据标准：${q.evidence}</div>`;
+            
+            q.options.forEach(opt => {
+                html += `
+                <label class="option-label" onclick="selectOption(this, '${q.id}')">
+                    <input type="radio" name="q_${q.id}" value="${opt.score}">
+                    <b>${opt.score}分：</b>${opt.text}
+                </label>`;
+            });
+            html += `</div>`;
+            form.innerHTML += html;
+        });
+
+        // 选项点击高亮效果
+        function selectOption(element, qId) {
+            let siblings = document.querySelectorAll(`input[name="q_${qId}"]`);
+            siblings.forEach(radio => {
+                radio.parentElement.classList.remove('selected');
+            });
+            element.classList.add('selected');
+        }
+
+        // 计算总分与建议
+        function calculateScore() {
+            let finalScore = 0;
+            let answered = 0;
+            let shortboards = [];
+            
+            questionsData.forEach(q => {
+                let radios = document.getElementsByName(`q_${q.id}`);
+                for (let i = 0; i < radios.length; i++) {
+                    if (radios[i].checked) {
+                        let score = parseFloat(radios[i].value);
+                        finalScore += score * (q.weight / 95); // 权重归一化 (权重总和是95)
+                        answered++;
+                        if(score <= 2) {
+                            shortboards.push(q.title);
+                        }
+                        break;
+                    }
+                }
+            });
+
+            if (answered < questionsData.length) {
+                alert("请填完所有维度的评分后再生成报告哦！");
+                return;
+            }
+
+            finalScore = finalScore.toFixed(2);
+            document.getElementById('final-score').innerText = finalScore + " 分";
+
+            // 评级与建议逻辑
+            let level = "";
+            let advice = "";
+
+            if (finalScore < 2.0) {
+                level = "【初级执行策划】";
+                advice = "当前阶段需要提升对空间设计的结构感，建议多在明确的框架下拆解优秀竞品的区域，不要仅凭直觉铺设地形。";
+            } else if (finalScore < 3.2) {
+                level = "【中级独立负责人】";
+                advice = "你已经具备交付一块可玩区域的能力。核心提升点在于打磨“闭环”：让每一个探索点有动机，让每一场战斗与地形紧密贴合。";
+            } else if (finalScore < 4.2) {
+                level = "【高级/主导级策划】";
+                advice = "你已能独当一面处理复杂系统耦合。下一步应关注团队产能复制，思考如何将你的设计经验抽象成模板、验证标准和生产管线。";
+            } else {
+                level = "【资深/方法论专家】";
+                advice = "卓越的综合把控能力。不仅能定义设计规则，还能驾驭底层逻辑与工具链，建议向制作人/大世界总架构师方向发展。";
+            }
+
+            if(shortboards.length > 0) {
+                advice += "<br><br><b>🚨 发现短板：</b>在【" + shortboards.join("】、【") + "】上得分偏低（≤2分），这可能会导致你所负责的关卡在项目实机整合时暴露出体验断层，建议优先针对性补齐。";
+            }
+
+            document.getElementById('final-level').innerText = level;
+            document.getElementById('final-advice').innerHTML = advice;
+            document.getElementById('result-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('result-modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
